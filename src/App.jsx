@@ -16,6 +16,18 @@ const starterTasks = [
   },
   {
     id: 2,
+    title: "Shelf Restocking",
+    business: "Daily Basket",
+    location: "1.8 km away",
+    duration: "25 min",
+    pay: 250,
+    workers: 2,
+    category: "Retail",
+    urgency: "Medium",
+    status: "Available",
+  },
+  {
+    id: 3,
     title: "Emergency Flyer Distribution",
     business: "QuickBite",
     location: "1.4 km away",
@@ -27,17 +39,98 @@ const starterTasks = [
     status: "Available",
   },
   {
-    id: 3,
+    id: 4,
+    title: "Store Promotion",
+    business: "Urban Cafe",
+    location: "2.5 km away",
+    duration: "40 min",
+    pay: 350,
+    workers: 2,
+    category: "Marketing",
+    urgency: "High",
+    status: "Available",
+  },
+  {
+    id: 5,
     title: "Inventory Counting",
     business: "DailyNeeds",
     location: "3.2 km away",
     duration: "20 min",
     pay: 200,
-    workers: 1,
+    workers: 2,
     category: "Inventory",
     urgency: "Medium",
     status: "Available",
   },
+  {
+    id: 6,
+    title: "Barcode Stock Check",
+    business: "ValueMart",
+    location: "2.7 km away",
+    duration: "30 min",
+    pay: 280,
+    workers: 2,
+    category: "Inventory",
+    urgency: "Medium",
+    status: "Available",
+  },
+  {
+    id: 7,
+    title: "Parcel Sorting",
+    business: "QuickShip Hub",
+    location: "3.6 km away",
+    duration: "45 min",
+    pay: 350,
+    workers: 2,
+    category: "Warehouse",
+    urgency: "High",
+    status: "Available",
+  },
+  {
+    id: 8,
+    title: "Packing Assistance",
+    business: "LocalKart Warehouse",
+    location: "4.1 km away",
+    duration: "35 min",
+    pay: 300,
+    workers: 2,
+    category: "Warehouse",
+    urgency: "Medium",
+    status: "Available",
+  },
+  {
+    id: 9,
+    title: "Event Setup Helper",
+    business: "City Events",
+    location: "2.9 km away",
+    duration: "60 min",
+    pay: 450,
+    workers: 2,
+    category: "Events",
+    urgency: "High",
+    status: "Available",
+  },
+  {
+    id: 10,
+    title: "Booth Assistance",
+    business: "Market Expo",
+    location: "3.3 km away",
+    duration: "50 min",
+    pay: 400,
+    workers: 2,
+    category: "Events",
+    urgency: "Medium",
+    status: "Available",
+  },
+];
+
+const categories = [
+  "All",
+  "Retail",
+  "Marketing",
+  "Inventory",
+  "Warehouse",
+  "Events",
 ];
 
 function App() {
@@ -87,6 +180,7 @@ function App() {
       ...form,
       id: Date.now(),
       pay: Number(form.pay),
+      workers: Number(form.workers),
       status: "Available",
       location: form.location || "Nearby",
     };
@@ -110,9 +204,12 @@ function App() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
+      const searchValue = search.toLowerCase();
+
       const matchesSearch =
-        task.title.toLowerCase().includes(search.toLowerCase()) ||
-        task.business.toLowerCase().includes(search.toLowerCase());
+        task.title.toLowerCase().includes(searchValue) ||
+        task.business.toLowerCase().includes(searchValue) ||
+        task.category.toLowerCase().includes(searchValue);
 
       const matchesCategory =
         category === "All" || task.category === category;
@@ -157,7 +254,10 @@ function App() {
 
           <select
             value={role}
-            onChange={(e) => setRole(e.target.value)}
+            onChange={(e) => {
+              setRole(e.target.value);
+              setShowForm(false);
+            }}
           >
             <option>Worker</option>
             <option>Business</option>
@@ -189,7 +289,7 @@ function App() {
             <div className="hero-pills">
               <span>⚡ 10–60 min gigs</span>
               <span>📍 Nearby workers</span>
-              <span>💰 Instant opportunities</span>
+              <span>💰 Quick opportunities</span>
             </div>
           </div>
 
@@ -245,74 +345,83 @@ function App() {
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               >
-                <option>All</option>
-                <option>Retail</option>
-                <option>Marketing</option>
-                <option>Inventory</option>
-                <option>Store Setup</option>
-                <option>Delivery Support</option>
+                {categories.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
               </select>
             </div>
 
             <div className="section-heading">
               <div>
                 <h2>Available near you</h2>
-                <p>{filteredTasks.length} opportunities found</p>
+                <p>
+                  {filteredTasks.length} opportunities found
+                </p>
               </div>
             </div>
 
             <div className="task-grid">
-              {filteredTasks.map((task) => (
-                <div className="task-card" key={task.id}>
-
-                  <div className="task-top">
-                    <span className="category">
-                      {task.category}
-                    </span>
-
-                    <span className="status">
-                      {task.status}
-                    </span>
-                  </div>
-
-                  <h3>{task.title}</h3>
-
-                  <p className="business">
-                    {task.business}
+              {filteredTasks.length === 0 ? (
+                <div className="empty">
+                  <div>⌕</div>
+                  <h3>No tasks found</h3>
+                  <p>
+                    Try another search or category.
                   </p>
+                </div>
+              ) : (
+                filteredTasks.map((task) => (
+                  <div className="task-card" key={task.id}>
 
-                  <div className="task-info">
-                    <span>📍 {task.location}</span>
-                    <span>⏱ {task.duration}</span>
-                  </div>
+                    <div className="task-top">
+                      <span className="category">
+                        {task.category}
+                      </span>
 
-                  <div className="urgency">
-                    <span>Urgency</span>
-                    <b>{task.urgency}</b>
-                  </div>
-
-                  <div className="task-bottom">
-                    <div>
-                      <small>PAY</small>
-                      <strong>₹{task.pay}</strong>
-                    </div>
-
-                    {task.status === "Available" ? (
-                      <button
-                        onClick={() =>
-                          updateTask(task.id, "Accepted")
-                        }
-                      >
-                        Accept Task →
-                      </button>
-                    ) : (
-                      <span className="accepted-label">
+                      <span className="status">
                         {task.status}
                       </span>
-                    )}
+                    </div>
+
+                    <h3>{task.title}</h3>
+
+                    <p className="business">
+                      {task.business}
+                    </p>
+
+                    <div className="task-info">
+                      <span>📍 {task.location}</span>
+                      <span>⏱ {task.duration}</span>
+                    </div>
+
+                    <div className="urgency">
+                      <span>Urgency</span>
+                      <b>{task.urgency}</b>
+                    </div>
+
+                    <div className="task-bottom">
+                      <div>
+                        <small>PAY</small>
+                        <strong>₹{task.pay}</strong>
+                      </div>
+
+                      {task.status === "Available" ? (
+                        <button
+                          onClick={() =>
+                            updateTask(task.id, "Accepted")
+                          }
+                        >
+                          Accept Task →
+                        </button>
+                      ) : (
+                        <span className="accepted-label">
+                          {task.status}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             <section className="active-section">
@@ -327,7 +436,9 @@ function App() {
                 <div className="empty">
                   <div>✓</div>
                   <h3>No active tasks</h3>
-                  <p>Accept a task to start earning.</p>
+                  <p>
+                    Accept a task to start earning.
+                  </p>
                 </div>
               ) : (
                 accepted.map((task) => (
@@ -336,9 +447,12 @@ function App() {
                       <span className="category">
                         {task.category}
                       </span>
+
                       <h3>{task.title}</h3>
+
                       <p>
-                        {task.business} · {task.duration}
+                        {task.business} · {task.duration} · ₹
+                        {task.pay}
                       </p>
                     </div>
 
@@ -373,7 +487,7 @@ function App() {
                 className="primary-btn"
                 onClick={() => setShowForm(!showForm)}
               >
-                + Create Task
+                {showForm ? "Close Form" : "+ Create Task"}
               </button>
             </div>
 
@@ -428,11 +542,11 @@ function App() {
                     })
                   }
                 >
-                  <option>Retail</option>
-                  <option>Marketing</option>
-                  <option>Inventory</option>
-                  <option>Store Setup</option>
-                  <option>Delivery Support</option>
+                  {categories
+                    .filter((item) => item !== "All")
+                    .map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
                 </select>
 
                 <select
@@ -468,6 +582,7 @@ function App() {
 
                 <input
                   type="number"
+                  min="1"
                   placeholder="Payment ₹"
                   required
                   value={form.pay}
@@ -488,7 +603,7 @@ function App() {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      workers: Number(e.target.value),
+                      workers: e.target.value,
                     })
                   }
                 />
@@ -539,7 +654,7 @@ function App() {
 
                     <p>
                       {task.business} · {task.duration} · ₹
-                      {task.pay}
+                      {task.pay} · {task.workers} workers
                     </p>
                   </div>
 
@@ -558,8 +673,12 @@ function App() {
 
             <div className="section-heading">
               <div>
-                <p className="eyebrow">ADMIN CONTROL CENTER</p>
+                <p className="eyebrow">
+                  ADMIN CONTROL CENTER
+                </p>
+
                 <h2>Platform Overview</h2>
+
                 <p>
                   Monitor tasks, workers and business activity.
                 </p>
@@ -597,7 +716,12 @@ function App() {
                   key={task.id}
                 >
                   <div>
+                    <span className="category">
+                      {task.category}
+                    </span>
+
                     <h3>{task.title}</h3>
+
                     <p>
                       {task.business} · {task.location}
                     </p>
