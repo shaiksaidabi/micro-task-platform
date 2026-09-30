@@ -1,131 +1,492 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const getAuthToken = () => {
+  return localStorage.getItem("gigforce_token");
+};
+
+const getWorkerAuthToken = () => {
+  return localStorage.getItem("gigforce_token");
+};
+
+
+ const normalizeApiRequest = (request) => {
+  const requiredDate =
+    request.required_date || request.requiredDate || "";
+
+  return {
+    ...request,
+
+    id: request.id,
+
+    companyName:
+      request.company_name ||
+      request.companyName ||
+      "",
+
+    company:
+      request.company ||
+      request.company_name ||
+      request.companyName ||
+      "",
+
+    workType:
+      request.work_type ||
+      request.workType ||
+      "",
+
+    location:
+      request.location ||
+      "",
+
+    workersRequired:
+      Number(
+        request.workers_required ||
+        request.workersRequired ||
+        0
+      ),
+
+    assignedCount:
+      Number(
+        request.assigned_workers ||
+        request.assignedCount ||
+        0
+      ),
+
+    completedWorkers:
+      Number(
+        request.completed_workers ||
+        request.completedWorkers ||
+        0
+      ),
+
+    workersRemaining:
+      Number(
+        request.workers_remaining ||
+        request.workersRemaining ||
+        0
+      ),
+
+    duration:
+      request.duration ||
+      "",
+
+    requiredDate,
+
+    date:
+      request.date ||
+      requiredDate,
+
+    priority:
+      request.priority ||
+      "Medium",
+
+    status:
+      request.status ||
+      "Open",
+
+    createdAt:
+      request.created_at ||
+      request.createdAt ||
+      "",
+  };
+};
 /* =========================================================
    INITIAL DATA
 ========================================================= */
 
-const initialRequests = [
-  {
-    id: 1,
-    company: "QuickCommerce",
-    initials: "QC",
-    workType: "Delivery Support",
-    location: "Hyderabad",
-    workersRequired: 20,
-    duration: "6 Hours",
-    date: "Today",
-    priority: "High",
-    status: "Open",
-    assignedWorkers: [],
-  },
-  {
-    id: 2,
-    company: "FlashKart",
-    initials: "FK",
-    workType: "Warehouse Support",
-    location: "Madhapur",
-    workersRequired: 15,
-    duration: "4 Hours",
-    date: "Today",
-    priority: "Medium",
-    status: "Open",
-    assignedWorkers: [],
-  },
-  {
-    id: 3,
-    company: "RapidRetail",
-    initials: "RR",
-    workType: "Delivery Support",
-    location: "Gachibowli",
-    workersRequired: 12,
-    duration: "5 Hours",
-    date: "Tomorrow",
-    priority: "High",
-    status: "Open",
-    assignedWorkers: [],
-  },
-  {
-    id: 4,
-    company: "CityMart",
-    initials: "CM",
-    workType: "Store Operations",
-    location: "Kukatpally",
-    workersRequired: 8,
-    duration: "3 Hours",
-    date: "Tomorrow",
-    priority: "Low",
-    status: "Open",
-    assignedWorkers: [],
-  },
-];
 
-const initialWorkers = [
-  {
-    id: 1,
-    name: "Rahul Kumar",
-    initials: "RK",
-    location: "Hyderabad",
-    type: "Delivery Partner",
-    experience: "2 Years",
-    rating: "4.8",
-    availability: "Available",
-  },
-  {
-    id: 2,
-    name: "Arjun Reddy",
-    initials: "AR",
-    location: "Madhapur",
-    type: "Gig Worker",
-    experience: "1.5 Years",
-    rating: "4.7",
-    availability: "Available",
-  },
-  {
-    id: 3,
-    name: "Vikram Singh",
-    initials: "VS",
-    location: "Gachibowli",
-    type: "Delivery Partner",
-    experience: "3 Years",
-    rating: "4.9",
-    availability: "Busy",
-  },
-  {
-    id: 4,
-    name: "Sanjay Kumar",
-    initials: "SK",
-    location: "Kukatpally",
-    type: "Gig Worker",
-    experience: "1 Year",
-    rating: "4.6",
-    availability: "Available",
-  },
-  {
-    id: 5,
-    name: "Imran Ali",
-    initials: "IA",
-    location: "Secunderabad",
-    type: "Delivery Partner",
-    experience: "2.5 Years",
-    rating: "4.8",
-    availability: "Available",
-  },
-];
 
+/* =========================================================
+   LOGIN SCREEN
+========================================================= */
+
+const LoginScreen = ({ onLogin }) => {
+  const [mode, setMode] = useState("login");
+  const [registerRole, setRegisterRole] = useState("company");
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [workerType, setWorkerType] = useState("Delivery Partner");
+  const [skills, setSkills] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const resetMessages = () => {
+    setError("");
+    setSuccess("");
+  };
+
+  const handleLogin = async (event) => {
+    event.preventDefault();
+
+    resetMessages();
+
+    if (!email.trim() || !password) {
+      setError("Please enter email and password.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Invalid email or password.");
+      }
+
+      localStorage.setItem("gigforce_token", data.token);
+      localStorage.setItem("gigforce_role", data.user.role);
+      localStorage.setItem("gigforce_user", JSON.stringify(data.user));
+
+      localStorage.removeItem("gigforce_admin_token");
+      localStorage.removeItem("gigforce_worker_token");
+      localStorage.removeItem("token");
+
+      onLogin(data.user);
+    } catch (error) {
+      console.error("Login error:", error);
+      setError(error.message || "Unable to login.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (event) => {
+    event.preventDefault();
+
+    resetMessages();
+
+    if (!name.trim() || !email.trim() || !password || !phone.trim()) {
+      setError("Please fill all required fields.");
+      return;
+    }
+
+    if (registerRole === "company" && !companyName.trim()) {
+      setError("Please enter company name.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const endpoint =
+        registerRole === "company"
+          ? `${API_BASE_URL}/companies/register`
+          : `${API_BASE_URL}/workers/register`;
+
+      const body =
+        registerRole === "company"
+          ? {
+              name: name.trim(),
+              email: email.trim(),
+              password,
+              companyName: companyName.trim(),
+              phone: phone.trim(),
+              city: city.trim(),
+            }
+          : {
+              name: name.trim(),
+              email: email.trim(),
+              password,
+              phone: phone.trim(),
+              city: city.trim(),
+              workerType,
+              skills: skills.trim(),
+            };
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Registration failed.");
+      }
+
+      setSuccess(
+        "Registration successful 🚀 Please login with your new account."
+      );
+
+      setMode("login");
+      setPassword("");
+    } catch (error) {
+      console.error("Registration error:", error);
+      setError(error.message || "Registration failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-brand">
+          <div className="auth-logo">G</div>
+          <div>
+            <h1>GigForce</h1>
+            <p>B2B Workforce Platform</p>
+          </div>
+        </div>
+
+        <div className="auth-tabs">
+          <button
+            className={mode === "login" ? "active" : ""}
+            onClick={() => {
+              setMode("login");
+              resetMessages();
+            }}
+          >
+            Login
+          </button>
+
+          <button
+            className={mode === "register" ? "active" : ""}
+            onClick={() => {
+              setMode("register");
+              resetMessages();
+            }}
+          >
+            Register
+          </button>
+        </div>
+
+        {mode === "login" ? (
+          <form className="auth-form" onSubmit={handleLogin}>
+            <div>
+              <label>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+              />
+            </div>
+
+            <div>
+              <label>Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+              />
+            </div>
+
+            {error && <div className="auth-error">{error}</div>}
+            {success && <div className="auth-success">{success}</div>}
+
+            <button
+              className="auth-submit"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Logging in..." : "Login"}
+            </button>
+          </form>
+        ) : (
+          <form className="auth-form" onSubmit={handleRegister}>
+            <div className="register-role-switch">
+              <button
+                type="button"
+                className={registerRole === "company" ? "active" : ""}
+                onClick={() => setRegisterRole("company")}
+              >
+                Company
+              </button>
+
+              <button
+                type="button"
+                className={registerRole === "worker" ? "active" : ""}
+                onClick={() => setRegisterRole("worker")}
+              >
+                Worker
+              </button>
+            </div>
+
+            <div>
+              <label>{registerRole === "company" ? "Contact Name" : "Full Name"}</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter name"
+              />
+            </div>
+
+            {registerRole === "company" && (
+              <div>
+                <label>Company Name</label>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Enter company name"
+                />
+              </div>
+            )}
+
+            <div>
+              <label>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter email"
+              />
+            </div>
+
+            <div>
+              <label>Phone</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Enter phone number"
+              />
+            </div>
+
+            <div>
+              <label>City</label>
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Enter city"
+              />
+            </div>
+
+            {registerRole === "worker" && (
+              <>
+                <div>
+                  <label>Worker Type</label>
+                  <select
+                    value={workerType}
+                    onChange={(e) => setWorkerType(e.target.value)}
+                  >
+                    <option>Delivery Partner</option>
+                    <option>Warehouse Worker</option>
+                    <option>Store Operations</option>
+                    <option>Inventory Support</option>
+                    <option>Event Support</option>
+                    <option>Other Gig Work</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label>Skills</label>
+                  <input
+                    type="text"
+                    value={skills}
+                    onChange={(e) => setSkills(e.target.value)}
+                    placeholder="Delivery, Navigation, Customer Handling"
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              <label>Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Create password"
+              />
+            </div>
+
+            {error && <div className="auth-error">{error}</div>}
+            {success && <div className="auth-success">{success}</div>}
+
+            <button
+              className="auth-submit"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Creating Account..." : "Create Account"}
+            </button>
+          </form>
+        )}
+
+        <div className="auth-footer">
+          <span>GigForce Workforce Network</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 /* =========================================================
    APP
 ========================================================= */
 
 function App() {
-  const [role, setRole] = useState("company");
 
-  const [activePage, setActivePage] = useState("dashboard");
+  const storedUser = localStorage.getItem("gigforce_user");
+  const storedRole = localStorage.getItem("gigforce_role");
 
-  const [requests, setRequests] = useState(initialRequests);
-  const [workers, setWorkers] = useState(initialWorkers);
-  const [selectedRequestId, setSelectedRequestId] = useState(initialRequests[0].id);
-  const [selectedDetailsRequestId, setSelectedDetailsRequestId] = useState(null);
+  let parsedUser = null;
+
+  try {
+    parsedUser = storedUser
+      ? JSON.parse(storedUser)
+      : null;
+  } catch {
+    parsedUser = null;
+  }
+
+  const [isAuthenticated, setIsAuthenticated] =
+    useState(
+      Boolean(
+        getAuthToken() && storedRole
+      )
+    );
+
+  const [currentUser, setCurrentUser] =
+    useState(parsedUser);
+
+  const [role, setRole] =
+    useState(storedRole || "company");
+
+  const [activePage, setActivePage] =
+    useState("dashboard");
+
+  const [requests, setRequests] = useState([]);
+  const [workerJobs, setWorkerJobs] = useState([]);
+const [workerJobsLoading, setWorkerJobsLoading] = useState(false);
+const [workerAssignments, setWorkerAssignments] = useState([]);
+const [workerAssignmentsLoading, setWorkerAssignmentsLoading] = useState(false);
+const [workerProfile, setWorkerProfile] = useState(null);
+const [workerProfileLoading, setWorkerProfileLoading] = useState(false);
+  const [workers, setWorkers] = useState([]);
+  
+  const [selectedDetailsRequest, setSelectedDetailsRequest] = useState(null);
 
   const [toast, setToast] = useState("");
 
@@ -138,6 +499,56 @@ function App() {
     priority: "Medium",
   });
 
+  /* =========================================================
+     LOAD COMPANY REQUESTS FROM BACKEND
+  ========================================================= */
+
+  const loadCompanyRequests = async () => {
+    const token = getAuthToken();
+
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/company/my-requests`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to load workforce requests.");
+      }
+
+      setRequests(data.requests.map(normalizeApiRequest));
+    } catch (error) {
+      console.error("My Requests API error:", error);
+      showToast("Could not load live requests.");
+    }
+  };
+
+  useEffect(() => {
+    if (role === "company") {
+      loadCompanyRequests();
+    }
+  }, [role]);
+useEffect(() => {
+  if (role !== "worker") return;
+
+  if (activePage === "dashboard" || activePage === "jobs") {
+    loadWorkerJobs();
+  }
+
+  if (activePage === "dashboard" || activePage === "assignments") {
+    loadWorkerAssignments();
+  }
+
+  if (activePage === "profile") {
+    loadWorkerProfile();
+  }
+}, [role, activePage]);
+
   const showToast = (message) => {
     setToast(message);
 
@@ -145,7 +556,157 @@ function App() {
       setToast("");
     }, 2500);
   };
+  const loadCompanyDashboard = async () => {
+  try {
+    const token = getAuthToken();
 
+    const response = await fetch(
+      `${API_BASE_URL}/company/dashboard`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to load dashboard"
+      );
+    }
+
+    return data.dashboard;
+  } catch (error) {
+    console.error(
+      "Company dashboard error:",
+      error
+    );
+
+    return null;
+  }
+};
+const loadWorkerJobs = async () => {
+const token = getWorkerAuthToken();
+  if (!token) {
+    showToast("Worker login token not found.");
+    return;
+  }
+
+  setWorkerJobsLoading(true);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/worker/jobs`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Failed to load worker jobs.");
+    }
+
+    setWorkerJobs(data.jobs.map(normalizeApiRequest));
+  } catch (error) {
+    console.error("Worker Jobs API error:", error);
+    showToast(error.message || "Could not load available jobs.");
+  } finally {
+    setWorkerJobsLoading(false);
+  }
+};
+const loadWorkerAssignments = async () => {
+const token = getWorkerAuthToken();
+  if (!token) {
+    showToast("Worker login token not found.");
+    return;
+  }
+
+  setWorkerAssignmentsLoading(true);
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/worker/assignments`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.message || "Failed to load assignments."
+      );
+    }
+
+    setWorkerAssignments(data.assignments || []);
+  } catch (error) {
+    console.error(
+      "Worker Assignments API error:",
+      error
+    );
+
+    showToast(
+      error.message ||
+        "Could not load your assignments."
+    );
+  } finally {
+    setWorkerAssignmentsLoading(false);
+  }
+};
+const loadWorkerProfile = async () => {
+const token = getWorkerAuthToken();
+  if (!token) {
+    showToast("Worker login token not found.");
+    return;
+  }
+
+  setWorkerProfileLoading(true);
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/profile`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.message || "Failed to load profile."
+      );
+    }
+
+    setWorkerProfile(data.user);
+  } catch (error) {
+    console.error(
+      "Worker Profile API error:",
+      error
+    );
+
+    showToast(
+      error.message ||
+        "Could not load your profile."
+    );
+  } finally {
+    setWorkerProfileLoading(false);
+  }
+};
   /* =========================================================
      STATS
   ========================================================= */
@@ -180,7 +741,7 @@ function App() {
     }));
   };
 
-  const createWorkforceRequest = (event) => {
+  const createWorkforceRequest = async (event) => {
     event.preventDefault();
 
     if (
@@ -192,223 +753,148 @@ function App() {
       return;
     }
 
-    const companyName = "Your Company";
+const token = getAuthToken();
+    if (!token) {
+      showToast("Please login as a company first.");
+      return;
+    }
 
-    const newRequest = {
-      id: Date.now(),
-      company: companyName,
-      initials: "YC",
-      workType: requestForm.workType,
-      location: requestForm.location.trim(),
-      workersRequired: Number(requestForm.workersRequired),
-      duration: requestForm.duration,
-      date: requestForm.date,
-      priority: requestForm.priority,
-      status: "Open",
-      assignedWorkers: [],
+    const dateMap = {
+      Today: 0,
+      Tomorrow: 1,
+      "Within 3 Days": 3,
+      "Next Week": 7,
     };
 
-    setRequests((previous) => [newRequest, ...previous]);
+    const requiredDate = new Date();
+    requiredDate.setDate(
+      requiredDate.getDate() + (dateMap[requestForm.date] ?? 0)
+    );
 
-    setRequestForm({
-      workType: "Delivery Support",
-      location: "",
-      workersRequired: "",
-      duration: "4 Hours",
-      date: "Today",
-      priority: "Medium",
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/workforce-requests`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          workType: requestForm.workType,
+          location: requestForm.location.trim(),
+          workersRequired: Number(requestForm.workersRequired),
+          duration: requestForm.duration,
+          requiredDate: requiredDate.toISOString(),
+          priority: requestForm.priority,
+        }),
+      });
 
-    showToast("Workforce request created successfully.");
+      const data = await response.json();
 
-    setActivePage("requests");
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to create workforce request.");
+      }
+
+      setRequestForm({
+        workType: "Delivery Support",
+        location: "",
+        workersRequired: "",
+        duration: "4 Hours",
+        date: "Today",
+        priority: "Medium",
+      });
+
+      await loadCompanyRequests();
+      showToast("Workforce request created successfully.");
+      setActivePage("requests");
+    } catch (error) {
+      console.error("Create request API error:", error);
+      showToast(error.message || "Could not create workforce request.");
+    }
   };
 
   /* =========================================================
      COMPLETE REQUEST
   ========================================================= */
 
-const markComplete = (requestId) => {
-  const targetRequest = requests.find(
-    (request) => request.id === requestId
-  );
-
-  if (!targetRequest) return;
-
-  const assignedWorkerIds = (targetRequest.assignedWorkers || []).map(
-    (worker) => worker.id
-  );
-
-  // Complete the request AND clear assigned workers
-  setRequests((previous) =>
-    previous.map((request) =>
-      request.id === requestId
-        ? {
-            ...request,
-            status: "Completed",
-            assignedWorkers: [],
-          }
-        : request
-    )
-  );
-
-  // Release assigned workers
-  if (assignedWorkerIds.length > 0) {
-    setWorkers((previous) =>
-      previous.map((worker) =>
-        assignedWorkerIds.includes(worker.id)
-          ? {
-              ...worker,
-              availability: "Available",
-            }
-          : worker
-      )
-    );
-  }
-
-  showToast(
-    assignedWorkerIds.length > 0
-      ? "Request completed. Assigned workers are now available."
-      : "Workforce request marked as completed."
-  );
-};
 
   /* =========================================================
      WORKER MATCHING / ASSIGNMENT
   ========================================================= */
 
-  const assignWorkerToRequest = (requestId, workerId) => {
-    const worker = workers.find((item) => item.id === workerId);
+ 
 
-    if (!worker) return;
+ const acceptJob = async (requestId) => {
+  const token = getWorkerAuthToken();
 
-    const targetRequest = requests.find((request) => request.id === requestId);
+  if (!token) {
+    showToast("Please login as a worker first.");
+    return;
+  }
 
-    if (!targetRequest) return;
-
-    const assignedWorkers = targetRequest.assignedWorkers || [];
-
-    if (assignedWorkers.some((item) => item.id === workerId)) {
-      showToast(`${worker.name} is already assigned.`);
-      return;
-    }
-
-    if (assignedWorkers.length >= Number(targetRequest.workersRequired)) {
-      showToast("This workforce request is already fully staffed.");
-      return;
-    }
-
-    setRequests((previous) =>
-      previous.map((request) => {
-        if (request.id !== requestId) return request;
-
-        const updatedAssignedWorkers = [
-          ...(request.assignedWorkers || []),
-          {
-            id: worker.id,
-            name: worker.name,
-            initials: worker.initials,
-          },
-        ];
-
-        return {
-          ...request,
-          assignedWorkers: updatedAssignedWorkers,
-          status:
-            updatedAssignedWorkers.length >= Number(request.workersRequired)
-              ? "Assigned"
-              : "Partially Assigned",
-        };
-      })
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/worker/jobs/${requestId}/accept`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      }
     );
 
-    setWorkers((previous) =>
-      previous.map((item) =>
-        item.id === workerId
-          ? { ...item, availability: "Busy" }
-          : item
-      )
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.message || "Failed to accept job."
+      );
+    }
+
+    showToast("Job accepted successfully 🚀");
+
+    // Refresh available jobs
+    await loadWorkerJobs();
+
+    // Refresh my assignments
+    await loadWorkerAssignments();
+  } catch (error) {
+    console.error("Accept Job API error:", error);
+
+    showToast(
+      error.message || "Could not accept job."
     );
-
-    showToast(`${worker.name} assigned successfully.`);
-  };
-
-  const acceptJob = (requestId) => {
-  const currentWorker = workers.find((worker) => worker.id === 1);
-
-  if (!currentWorker) {
-    showToast("Worker profile not found.");
-    return;
   }
-
-  const targetRequest = requests.find(
-    (request) => request.id === requestId
-  );
-
-  if (!targetRequest) return;
-
-  const assignedWorkers = targetRequest.assignedWorkers || [];
-
-  // Prevent duplicate assignment
-  if (assignedWorkers.some((worker) => worker.id === currentWorker.id)) {
-    showToast("You are already assigned to this job.");
-    return;
-  }
-
-  // Check whether the request still needs workers
-  if (
-    assignedWorkers.length >= Number(targetRequest.workersRequired)
-  ) {
-    showToast("This workforce request is already fully assigned.");
-    return;
-  }
-
-  // Add current worker to this request
-  const updatedAssignedWorkers = [
-    ...assignedWorkers,
-    currentWorker,
-  ];
-
-  const isFullyAssigned =
-    updatedAssignedWorkers.length >=
-    Number(targetRequest.workersRequired);
-
-  setRequests((previous) =>
-    previous.map((request) =>
-      request.id === requestId
-        ? {
-            ...request,
-            assignedWorkers: updatedAssignedWorkers,
-            status: isFullyAssigned
-              ? "Assigned"
-              : "Partially Assigned",
-          }
-        : request
-    )
-  );
-
-  // Worker becomes busy
-  setWorkers((previous) =>
-    previous.map((worker) =>
-      worker.id === currentWorker.id
-        ? {
-            ...worker,
-            availability: "Busy",
-          }
-        : worker
-    )
-  );
-
-  showToast("Job accepted successfully.");
 };
   /* =========================================================
      ROLE CHANGE
   ========================================================= */
 
-  const changeRole = (newRole) => {
-    setRole(newRole);
-    setActivePage("dashboard");
-  };
+/* =========================================================
+   AUTHENTICATION
+========================================================= */
+
+const handleLoginSuccess = (user) => {
+  setCurrentUser(user);
+  setRole(user.role);
+  setActivePage("dashboard");
+  setIsAuthenticated(true);
+};
+
+const handleLogout = () => {
+  localStorage.removeItem("gigforce_token");
+  localStorage.removeItem("gigforce_role");
+  localStorage.removeItem("gigforce_user");
+
+  localStorage.removeItem("gigforce_admin_token");
+  localStorage.removeItem("gigforce_worker_token");
+  localStorage.removeItem("token");
+
+  setCurrentUser(null);
+  setRole("company");
+  setActivePage("dashboard");
+  setIsAuthenticated(false);
+};
 
   /* =========================================================
      PAGE TITLE
@@ -569,28 +1055,28 @@ const markComplete = (requestId) => {
           </div>
         </div>
 
-        <div className="role-switch">
-          <button
-            className={role === "company" ? "active" : ""}
-            onClick={() => changeRole("company")}
-          >
-            Company
-          </button>
+        <div className="header-account">
+  <div className="header-user">
+    <strong>
+      {currentUser?.name || "User"}
+    </strong>
 
-          <button
-            className={role === "worker" ? "active" : ""}
-            onClick={() => changeRole("worker")}
-          >
-            Worker
-          </button>
+    <span>
+      {role === "admin"
+        ? "Administrator"
+        : role === "worker"
+          ? "Worker"
+          : "Company"}
+    </span>
+  </div>
 
-          <button
-            className={role === "admin" ? "active" : ""}
-            onClick={() => changeRole("admin")}
-          >
-            Admin
-          </button>
-        </div>
+  <button
+    className="logout-btn"
+    onClick={handleLogout}
+  >
+    Logout
+  </button>
+</div>
       </header>
     );
   };
@@ -601,10 +1087,10 @@ const markComplete = (requestId) => {
 
   const RequestCard = ({ request, workerMode = false }) => {
     const assignedWorkers = request.assignedWorkers || [];
-    const assignedCount = assignedWorkers.length;
-    const remainingWorkers = Math.max(
-      Number(request.workersRequired) - assignedCount,
-      0
+    const assignedCount = Number(request.assignedCount ?? assignedWorkers.length);
+    const remainingWorkers = Number(
+      request.workersRemaining ??
+        Math.max(Number(request.workersRequired) - assignedCount, 0)
     );
 
     return (
@@ -676,20 +1162,13 @@ const markComplete = (requestId) => {
           ) : (
             <button
               className="secondary-btn"
-              onClick={() => setSelectedDetailsRequestId(request.id)}
+              onClick={() => setSelectedDetailsRequest(request)}
             >
               View Details
             </button>
           )}
 
-          {!workerMode && request.status !== "Assigned" && (
-            <button
-              className="small-btn"
-              onClick={() => markComplete(request.id)}
-            >
-              Mark Complete
-            </button>
-          )}
+
         </div>
       </div>
     );
@@ -699,75 +1178,154 @@ const markComplete = (requestId) => {
      COMPANY DASHBOARD
   ========================================================= */
 
-  const CompanyDashboard = () => {
-    return (
-      <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">B2B Workforce</div>
+ const CompanyDashboard = () => {
+  const [dashboardData, setDashboardData] = useState(null);
 
-            <h1>Workforce Dashboard</h1>
+  useEffect(() => {
+    const loadDashboard = async () => {
+      const data = await loadCompanyDashboard();
 
-            <p>
-              Manage your delivery and gig workforce requirements
-              from one place.
-            </p>
+      if (data) {
+        setDashboardData(data);
+      }
+    };
+
+    loadDashboard();
+  }, []);
+
+  const totalRequests =
+    Number(dashboardData?.total_requests || 0);
+
+  const activeRequests =
+    Number(dashboardData?.active_requests || 0);
+
+  const workersRequested =
+    Number(dashboardData?.workers_requested || 0);
+
+  const workersAssigned =
+    Number(dashboardData?.workers_assigned || 0);
+
+  const workersCompleted =
+    Number(dashboardData?.workers_completed || 0);
+
+  const workersPending = Math.max(
+    workersRequested -
+      workersAssigned -
+      workersCompleted,
+    0
+  );
+
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">
+            B2B WORKFORCE
           </div>
 
-          <button
-            className="primary-btn"
-            onClick={() => setActivePage("request")}
-          >
-            + Request Workers
-          </button>
+          <h1>Workforce Dashboard</h1>
+
+          <p>
+            Manage your delivery and gig workforce
+            requirements from one place.
+          </p>
         </div>
 
-        <div className="stats-grid">
-          <Stat icon="◉" label="Total Requests" value={totalRequests} />
+        <button
+          className="primary-btn"
+          onClick={() => setActivePage("request")}
+        >
+          + Request Workers
+        </button>
+      </div>
 
-          <Stat icon="◷" label="Open Requests" value={openRequests} />
+      <div className="stats-grid">
+        <Stat
+          icon="◉"
+          label="Total Requests"
+          value={totalRequests}
+        />
 
-          <Stat
-            icon="♙"
-            label="Workers Requested"
-            value={workersRequested}
+        <Stat
+          icon="◷"
+          label="Active Requests"
+          value={activeRequests}
+        />
+
+        <Stat
+          icon="♙"
+          label="Workers Requested"
+          value={workersRequested}
+        />
+
+        <Stat
+          icon="✓"
+          label="Workers Completed"
+          value={workersCompleted}
+        />
+      </div>
+
+      <div className="section-header">
+        <div>
+          <h2>Workforce Overview</h2>
+          <p>
+            Live assignment status from your workforce requests.
+          </p>
+        </div>
+      </div>
+
+      <div className="stats-grid">
+        <Stat
+          icon="👥"
+          label="Workers Assigned"
+          value={workersAssigned}
+        />
+
+        <Stat
+          icon="✓"
+          label="Workers Completed"
+          value={workersCompleted}
+        />
+
+        <Stat
+          icon="◷"
+          label="Workers Pending"
+          value={workersPending}
+        />
+      </div>
+
+      <div className="section-header">
+        <div>
+          <h2>Recent Workforce Requests</h2>
+          <p>
+            Latest requirements raised by your company.
+          </p>
+        </div>
+
+        <button
+          className="text-btn"
+          onClick={() => setActivePage("requests")}
+        >
+          View All
+        </button>
+      </div>
+
+      <div className="request-grid">
+        {requests.slice(0, 4).map((request) => (
+          <RequestCard
+            key={request.id}
+            request={request}
           />
-
-          <Stat
-            icon="✓"
-            label="Workers Available"
-            value={workersAvailable}
-          />
-        </div>
-
-        <div className="section-header">
-          <div>
-            <h2>Recent Workforce Requests</h2>
-            <p>Latest requirements raised by your company</p>
-          </div>
-
-          <button
-            className="text-btn"
-            onClick={() => setActivePage("requests")}
-          >
-            View All
-          </button>
-        </div>
-
-        <div className="request-grid">
-          {requests.slice(0, 4).map((request) => (
-            <RequestCard key={request.id} request={request} />
-          ))}
-        </div>
-      </>
-    );
-  };
-
+        ))}
+      </div>
+    </>
+  );
+};
   /* =========================================================
      REQUEST FORM
   ========================================================= */
 
-  const RequestWorkers = () => {
+  const renderRequestWorkers = () => {
     return (
       <>
         <div className="page-heading">
@@ -931,16 +1489,47 @@ const markComplete = (requestId) => {
   ========================================================= */
 
   const MyRequests = () => {
-    return (
-      <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">Company Portal</div>
+  const totalRequests = requests.length;
 
-            <h1>My Requests</h1>
+  const openRequests = requests.filter(
+    (request) =>
+      request.status === "Open" ||
+      request.status === "Partially Assigned"
+  ).length;
 
-            <p>Track all workforce requirements raised by your company.</p>
-          </div>
+  const workersRequested = requests.reduce(
+    (total, request) =>
+      total + Number(request.workersRequired || 0),
+    0
+  );
+
+  const workersCompleted = requests.reduce(
+    (total, request) =>
+      total + Number(request.completedWorkers || 0),
+    0
+  );
+
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">COMPANY PORTAL</div>
+
+          <h1>My Requests</h1>
+
+          <p>
+            Track workforce requirements, assignments, and
+            fulfillment status.
+          </p>
+        </div>
+
+        <div className="page-actions">
+          <button
+            className="secondary-btn"
+            onClick={loadCompanyRequests}
+          >
+            ↻ Refresh
+          </button>
 
           <button
             className="primary-btn"
@@ -949,220 +1538,660 @@ const markComplete = (requestId) => {
             + New Request
           </button>
         </div>
+      </div>
 
-        <div className="stats-grid">
-          <Stat icon="◉" label="Total Requests" value={totalRequests} />
+      {/* STATS */}
+      <div className="stats-grid">
+        <Stat
+          icon="◉"
+          label="Total Requests"
+          value={totalRequests}
+        />
 
-          <Stat icon="◷" label="Open Requests" value={openRequests} />
+        <Stat
+          icon="◷"
+          label="Open Requests"
+          value={openRequests}
+        />
 
-          <Stat
-            icon="♙"
-            label="Workers Requested"
-            value={workersRequested}
-          />
+        <Stat
+          icon="♙"
+          label="Workers Requested"
+          value={workersRequested}
+        />
 
-          <Stat
-            icon="✓"
-            label="Workers Available"
-            value={workersAvailable}
-          />
+        <Stat
+          icon="✓"
+          label="Workers Completed"
+          value={workersCompleted}
+        />
+      </div>
+
+      {requests.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">◌</div>
+
+          <h3>No workforce requests yet</h3>
+
+          <p>
+            Create your first workforce request to start
+            finding gig workers.
+          </p>
+
+          <button
+            className="primary-btn"
+            onClick={() => setActivePage("request")}
+          >
+            + Create Request
+          </button>
         </div>
+      ) : (
+        <div className="gigforce-requests-grid">
+          {requests.map((request) => {
+            const assigned =
+              Number(request.assignedCount || 0);
 
-        <div className="request-grid">
-          {requests.map((request) => (
-            <RequestCard key={request.id} request={request} />
-          ))}
+            const completed =
+              Number(request.completedWorkers || 0);
+
+            const required =
+              Number(request.workersRequired || 0);
+
+            const remaining =
+              Number(
+                request.workersRemaining ??
+                  Math.max(
+                    required - assigned - completed,
+                    0
+                  )
+              );
+
+            const fulfilled =
+              assigned + completed;
+
+            const progress =
+              required > 0
+                ? Math.min(
+                    (fulfilled / required) * 100,
+                    100
+                  )
+                : 0;
+
+            const status =
+              request.status || "Open";
+
+            return (
+              <div
+                className="gigforce-request-card"
+                key={request.id}
+              >
+                <div className="gigforce-request-top">
+                  <div>
+                    <div className="request-number">
+                      REQUEST #{request.id}
+                    </div>
+
+                    <h3>
+                      {request.workType ||
+                        "Workforce Request"}
+                    </h3>
+                  </div>
+
+                  <span
+                    className={`gigforce-request-status ${
+                      status === "Open"
+                        ? "status-open"
+                        : status ===
+                            "Partially Assigned"
+                          ? "status-partial"
+                          : status === "Assigned"
+                            ? "status-assigned"
+                            : status === "Completed"
+                              ? "status-completed"
+                              : ""
+                    }`}
+                  >
+                    {status}
+                  </span>
+                </div>
+
+                <div className="gigforce-request-info">
+                  <div className="request-info-item">
+                    <span>📍 Location</span>
+                    <strong>
+                      {request.location || "—"}
+                    </strong>
+                  </div>
+
+                  <div className="request-info-item">
+                    <span>👥 Required</span>
+                    <strong>
+                      {required}
+                    </strong>
+                  </div>
+
+                  <div className="request-info-item">
+                    <span>⏱ Duration</span>
+                    <strong>
+                      {request.duration || "—"}
+                    </strong>
+                  </div>
+
+                  <div className="request-info-item">
+                    <span>⚡ Priority</span>
+                    <strong>
+                      {request.priority || "—"}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="gigforce-workforce-section">
+  <div className="workforce-progress-header">
+    <div>
+      <span className="workforce-progress-label">
+        Workforce Fulfillment
+      </span>
+
+      <strong>
+        {fulfilled} of {required} workers fulfilled
+      </strong>
+    </div>
+
+    <span className="workforce-progress-percent">
+      {Math.round(progress)}%
+    </span>
+  </div>
+
+  <div className="workforce-progress">
+    <div
+      className="workforce-progress-fill"
+      style={{
+        width: `${progress}%`,
+      }}
+    />
+  </div>
+
+  <div className="workforce-breakdown">
+    <div>
+      <span>Assigned</span>
+      <strong>{assigned}</strong>
+    </div>
+
+    <div>
+      <span>Completed</span>
+      <strong>{completed}</strong>
+    </div>
+
+    <div>
+      <span>Remaining</span>
+      <strong>{remaining}</strong>
+    </div>
+  </div>
+</div>
+                <div className="gigforce-request-footer">
+                  <span>
+                    📅{" "}
+                    {request.requiredDate
+                      ? new Date(
+                          request.requiredDate
+                        ).toLocaleDateString(
+                          "en-IN"
+                        )
+                      : "Date not set"}
+                  </span>
+
+                  <span>
+                    {request.companyName ||
+                      "Your Company"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </>
-    );
-  };
+      )}
+    </>
+  );
+};
 
   /* =========================================================
      AVAILABLE WORKERS / MATCHING
   ========================================================= */
 
-  const AvailableWorkers = () => {
-    const openRequests = requests.filter(
-      (request) =>
-        request.status !== "Assigned" &&
-        (request.assignedWorkers || []).length < Number(request.workersRequired)
-    );
+const AvailableWorkers = () => {
+  const [workers, setWorkers] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [selectedRequest, setSelectedRequest] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [assigningWorkerId, setAssigningWorkerId] = useState(null);
 
-    const selectedRequest = requests.find(
-      (request) => request.id === Number(selectedRequestId)
-    );
+  const loadWorkers = async () => {
+    const token = getAuthToken();
 
-    return (
-      <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">Workforce Network</div>
-            <h1>Available Workers</h1>
-            <p>Match available workers with your open workforce requirements.</p>
+    if (!token) {
+      showToast("Company login token not found.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/workers`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to load workers.");
+      }
+
+      setWorkers(data.workers || []);
+    } catch (error) {
+      console.error("Available Workers API error:", error);
+
+      showToast(
+        error.message || "Could not load available workers."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRequests = async () => {
+    const token = getAuthToken();
+
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/company/my-requests`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Failed to load workforce requests."
+        );
+      }
+
+      const availableRequests = (data.requests || []).filter(
+        (request) =>
+          request.status === "Open" ||
+          request.status === "Partially Assigned"
+      );
+
+      setRequests(availableRequests);
+
+      if (availableRequests.length > 0) {
+        setSelectedRequest(String(availableRequests[0].id));
+      } else {
+        setSelectedRequest("");
+      }
+    } catch (error) {
+      console.error("Requests API error:", error);
+
+      showToast(
+        error.message || "Could not load workforce requests."
+      );
+    }
+  };
+
+  const assignWorker = async (workerId, workerName) => {
+    const token = getAuthToken();
+
+    if (!token) {
+      showToast("Company login token not found.");
+      return;
+    }
+
+    if (!selectedRequest) {
+      showToast("Please select a workforce request first.");
+      return;
+    }
+
+    setAssigningWorkerId(workerId);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/workforce-requests/${selectedRequest}/assign`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            workerId: Number(workerId),
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Failed to assign worker."
+        );
+      }
+
+      showToast(`${workerName} assigned successfully 🚀`);
+
+      await loadWorkers();
+      await loadRequests();
+    } catch (error) {
+      console.error("Assign Worker API error:", error);
+
+      showToast(
+        error.message || "Could not assign worker."
+      );
+    } finally {
+      setAssigningWorkerId(null);
+    }
+  };
+
+  useEffect(() => {
+    loadWorkers();
+    loadRequests();
+  }, []);
+
+  const selectedRequestData = requests.find(
+    (request) =>
+      String(request.id) === String(selectedRequest)
+  );
+
+  return (
+    <>
+      {/* PAGE HEADER */}
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">
+            WORKFORCE MANAGEMENT
           </div>
+
+          <h1>Available Workers</h1>
+
+          <p>
+            Find available workers and assign them to your
+            workforce requests.
+          </p>
         </div>
 
-        <div className="matching-bar">
-          <div>
-            <strong>Select a workforce request</strong>
-            <p>Choose a request before assigning workers.</p>
-          </div>
-          <select
-            value={selectedRequestId}
-            onChange={(event) => setSelectedRequestId(Number(event.target.value))}
-          >
-            {openRequests.length === 0 ? (
-              <option value="">No open requests</option>
-            ) : (
-              openRequests.map((request) => (
-                <option key={request.id} value={request.id}>
-                  {request.company} • {request.location} • {request.workersRequired} workers
-                </option>
-              ))
+        <button
+          className="secondary-btn"
+          onClick={() => {
+            loadWorkers();
+            loadRequests();
+          }}
+          disabled={loading}
+        >
+          {loading ? "Loading..." : "↻ Refresh"}
+        </button>
+      </div>
+
+      {/* REQUEST SELECTOR */}
+      {requests.length > 0 && (
+        <div className="assignment-panel">
+          <div className="assignment-panel-header">
+            <div>
+              <div className="assignment-label">
+                WORKFORCE REQUEST
+              </div>
+
+              <h3>
+                Select a request to assign workers
+              </h3>
+            </div>
+
+            {selectedRequestData && (
+              <div className="remaining-badge">
+                {selectedRequestData.workers_remaining ?? 0}{" "}
+                remaining
+              </div>
             )}
+          </div>
+
+          <select
+            className="request-select"
+            value={selectedRequest}
+            onChange={(event) =>
+              setSelectedRequest(event.target.value)
+            }
+          >
+            {requests.map((request) => (
+              <option
+                key={request.id}
+                value={request.id}
+              >
+                Request #{request.id} —{" "}
+                {request.work_type} —{" "}
+                {request.location} —{" "}
+                {request.workers_remaining ?? 0} remaining
+              </option>
+            ))}
           </select>
         </div>
+      )}
 
-        {selectedRequest && (
-          <div className="matching-summary">
+      {/* WORKERS */}
+      {loading ? (
+        <div className="empty-state">
+          <h3>Loading workers...</h3>
+
+          <p>
+            Fetching available workers from GigForce.
+          </p>
+        </div>
+      ) : workers.length === 0 ? (
+        <div className="empty-state">
+          <h3>No workers available</h3>
+
+          <p>
+            There are currently no workers available
+            for assignment.
+          </p>
+        </div>
+      ) : (
+        <div className="gigforce-workers-grid">
+          {workers.map((worker) => (
+            <div
+              className="gigforce-worker-card"
+              key={worker.id}
+            >
+              {/* CARD HEADER */}
+              <div className="gigforce-worker-header">
+                <div className="gigforce-worker-avatar">
+                  {worker.name
+                    ? worker.name
+                        .charAt(0)
+                        .toUpperCase()
+                    : "W"}
+                </div>
+
+                <div className="gigforce-worker-title">
+                  <h3>{worker.name}</h3>
+
+                  <span className="gigforce-available">
+                    <span className="available-dot">
+                      ●
+                    </span>
+                    Available
+                  </span>
+                </div>
+              </div>
+
+              {/* DETAILS */}
+              <div className="gigforce-worker-details">
+                <div className="gigforce-detail">
+                  <span>Worker Type</span>
+
+                  <strong>
+                    {worker.worker_type ||
+                      "Not specified"}
+                  </strong>
+                </div>
+
+                <div className="gigforce-detail">
+                  <span>Location</span>
+
+                  <strong>
+                    {worker.city ||
+                      "Not specified"}
+                  </strong>
+                </div>
+
+                <div className="gigforce-detail">
+                  <span>Phone</span>
+
+                  <strong>
+                    {worker.phone ||
+                      "Not provided"}
+                  </strong>
+                </div>
+
+                <div className="gigforce-detail gigforce-skills">
+                  <span>Skills</span>
+
+                  <strong>
+                    {worker.skills ||
+                      "Not specified"}
+                  </strong>
+                </div>
+              </div>
+
+              {/* ACTION */}
+              <button
+                className="gigforce-assign-btn"
+                onClick={() =>
+                  assignWorker(
+                    worker.id,
+                    worker.name
+                  )
+                }
+                disabled={
+                  !selectedRequest ||
+                  assigningWorkerId === worker.id
+                }
+              >
+                {assigningWorkerId === worker.id
+                  ? "Assigning..."
+                  : "Assign Worker"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {requests.length === 0 &&
+        !loading &&
+        workers.length > 0 && (
+          <div className="gigforce-no-request">
+            <strong>
+              No open workforce requests
+            </strong>
+
             <span>
-              <strong>{selectedRequest.company}</strong> — {selectedRequest.workType}
-            </span>
-            <span>📍 {selectedRequest.location}</span>
-            <span>
-              👥 {(selectedRequest.assignedWorkers || []).length} / {selectedRequest.workersRequired} assigned
+              Create a workforce request before
+              assigning workers.
             </span>
           </div>
         )}
-
-        <div className="worker-grid">
-          {workers.map((worker) => {
-            const assignedToSelected =
-              selectedRequest?.assignedWorkers?.some((item) => item.id === worker.id);
-            const requestFull =
-              selectedRequest &&
-              (selectedRequest.assignedWorkers || []).length >=
-                Number(selectedRequest.workersRequired);
-
-            return (
-              <div className="worker-card" key={worker.id}>
-                <div className="worker-top">
-                  <div className="avatar">{worker.initials}</div>
-                  <span
-                    className={`availability ${
-                      worker.availability === "Available" ? "available" : "busy"
-                    }`}
-                  >
-                    {worker.availability}
-                  </span>
-                </div>
-
-                <h3>{worker.name}</h3>
-                <p>{worker.type}</p>
-
-                <div className="worker-details">
-                  <div>
-                    <span>Location</span>
-                    <strong>{worker.location}</strong>
-                  </div>
-                  <div>
-                    <span>Experience</span>
-                    <strong>{worker.experience}</strong>
-                  </div>
-                  <div>
-                    <span>Rating</span>
-                    <strong>⭐ {worker.rating}</strong>
-                  </div>
-                </div>
-
-                <button
-                  className="full-btn"
-                  disabled={
-                    !selectedRequest ||
-                    worker.availability !== "Available" ||
-                    assignedToSelected ||
-                    requestFull
-                  }
-                  onClick={() =>
-                    assignWorkerToRequest(selectedRequest.id, worker.id)
-                  }
-                >
-                  {assignedToSelected
-                    ? "Already Assigned"
-                    : worker.availability !== "Available"
-                      ? "Currently Busy"
-                      : requestFull
-                        ? "Request Fully Staffed"
-                        : "Assign Worker"}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </>
-    );
-  };
+    </>
+  );
+};
 
   /* =========================================================
      WORKER DASHBOARD
   ========================================================= */
 
   const WorkerDashboard = () => {
-    const openJobs = requests.filter(
-      (request) => request.status === "Open"
-    );
+  const openJobs = workerJobs.filter(
+    (request) =>
+      request.status === "Open" ||
+      request.status === "Partially Assigned"
+  );
 
-    const assignedJobs = requests.filter(
-      (request) => request.status === "Assigned"
-    );
+  const assignedJobs = workerAssignments.filter(
+    (assignment) => assignment.assignment_status !== "Completed"
+  );
 
-    return (
-      <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">Worker Portal</div>
+  return (
+    <>
+      <div className="page-header">
+        <div>
+          <h1>Worker Dashboard</h1>
+          <p>Find jobs and manage your workforce assignments.</p>
+        </div>
+      </div>
 
-            <h1>Worker Dashboard</h1>
+      <div className="stats-grid">
+        <Stat
+          icon="◉"
+          label="Available Jobs"
+          value={openJobs.length}
+        />
 
-            <p>Find flexible delivery and gig work opportunities.</p>
-          </div>
+        <Stat
+          icon="✓"
+          label="My Assignments"
+          value={assignedJobs.length}
+        />
 
-          <button
-            className="primary-btn"
-            onClick={() => setActivePage("jobs")}
-          >
-            Find Jobs
-          </button>
+        <Stat
+          icon="▣"
+          label="Completed Jobs"
+          value={
+            workerAssignments.filter(
+              (assignment) =>
+                assignment.assignment_status === "Completed"
+            ).length
+          }
+        />
+
+        <Stat
+          icon="◷"
+          label="Profile"
+          value="Active"
+        />
+      </div>
+
+      <div className="section-header">
+        <div>
+          <h2>Available Jobs</h2>
+          <p>Latest workforce opportunities matching your profile.</p>
         </div>
 
-        <div className="stats-grid">
-          <Stat icon="◉" label="Available Jobs" value={openJobs.length} />
+        <button
+          className="secondary-btn"
+          onClick={() => setActivePage("jobs")}
+        >
+          View All
+        </button>
+      </div>
 
-          <Stat
-            icon="✓"
-            label="My Assignments"
-            value={assignedJobs.length}
-          />
-
-          <Stat icon="★" label="Rating" value="4.8" />
-
-          <Stat icon="₹" label="This Month" value="₹12K" />
+      {workerJobsLoading ? (
+        <div className="empty-state">
+          Loading available jobs...
         </div>
-
-        <div className="section-header">
-          <div>
-            <h2>Available Jobs</h2>
-            <p>Latest workforce opportunities</p>
-          </div>
-
-          <button
-            className="text-btn"
-            onClick={() => setActivePage("jobs")}
-          >
-            View All
-          </button>
+      ) : openJobs.length === 0 ? (
+        <div className="empty-state">
+          <h3>No jobs available</h3>
+          <p>New workforce opportunities will appear here.</p>
         </div>
-
+      ) : (
         <div className="job-grid">
           {openJobs.slice(0, 4).map((request) => (
             <RequestCard
@@ -1172,33 +2201,57 @@ const markComplete = (requestId) => {
             />
           ))}
         </div>
-      </>
-    );
-  };
+      )}
+    </>
+  );
+};
 
   /* =========================================================
      AVAILABLE JOBS
   ========================================================= */
 
 const AvailableJobs = () => {
-  const openJobs = requests.filter(
-    (request) =>
-      request.status === "Open" ||
-      request.status === "Partially Assigned"
-  );
+  const openJobs = workerJobs.filter(
+  (request) =>
+    request.status === "Open" ||
+    request.status === "Partially Assigned"
+);
 
-    return (
-      <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">Worker Portal</div>
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">Worker Portal</div>
 
-            <h1>Available Jobs</h1>
+          <h1>Available Jobs</h1>
 
-            <p>Choose workforce opportunities that match your availability.</p>
-          </div>
+          <p>
+            Choose workforce opportunities that match your availability.
+          </p>
         </div>
 
+        <button
+          className="secondary-btn"
+          onClick={loadWorkerJobs}
+          disabled={workerJobsLoading}
+        >
+          {workerJobsLoading ? "Loading..." : "↻ Refresh"}
+        </button>
+      </div>
+
+      {workerJobsLoading ? (
+        <div className="empty-state">
+          <h3>Loading available jobs...</h3>
+          <p>Fetching live workforce opportunities.</p>
+        </div>
+      ) : openJobs.length === 0 ? (
+        <div className="empty-state">
+          <h3>No available jobs</h3>
+          <p>
+            There are currently no workforce opportunities available.
+          </p>
+        </div>
+      ) : (
         <div className="request-grid">
           {openJobs.map((request) => (
             <RequestCard
@@ -1208,52 +2261,197 @@ const AvailableJobs = () => {
             />
           ))}
         </div>
-      </>
-    );
-  };
-
+      )}
+    </>
+  );
+};
   /* =========================================================
      ASSIGNMENTS
   ========================================================= */
 
-  const MyAssignments = () => {
-  const currentWorkerId = 1;
+ const MyAssignments = () => {
+  const handleCompleteAssignment = async (assignmentId) => {
+    try {
+      const token = getWorkerAuthToken();
 
-  const assigned = requests.filter((request) =>
-    (request.assignedWorkers || []).some(
-      (worker) => worker.id === currentWorkerId
-    )
-  );
+      const response = await fetch(
+`${API_BASE_URL}/worker/assignments/${assignmentId}/complete`,        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showToast(
+          data.message || "Failed to complete assignment",
+         
+        );
+        return;
+      }
+
+      showToast(
+        "Assignment completed successfully 🚀",
+        
+      );
+
+      await loadWorkerAssignments();
+    } catch (error) {
+      console.error(
+        "Complete assignment error:",
+        error
+      );
+
+      showToast(
+        "Unable to complete assignment",
+        
+      );
+    }
+  };
 
   return (
     <>
       <div className="page-heading">
         <div>
-          <div className="eyebrow">Worker Portal</div>
+          <div className="eyebrow">WORKER PORTAL</div>
 
           <h1>My Assignments</h1>
 
-          <p>Workforce assignments you have accepted.</p>
+          <p>
+            Track your accepted workforce assignments.
+          </p>
         </div>
+
+        <button
+          className="secondary-btn"
+          onClick={loadWorkerAssignments}
+          disabled={workerAssignmentsLoading}
+        >
+          {workerAssignmentsLoading
+            ? "Loading..."
+            : "↻ Refresh"}
+        </button>
       </div>
 
-      {assigned.length === 0 ? (
+      {workerAssignmentsLoading ? (
+        <div className="empty-state">
+          <h3>Loading assignments...</h3>
+
+          <p>
+            Fetching your latest assignments.
+          </p>
+        </div>
+      ) : workerAssignments.length === 0 ? (
         <div className="empty-state">
           <h3>No assignments yet</h3>
 
           <p>
-            Accept an available job to see your assignment here.
+            Accept an available job to see your
+            assignment here.
           </p>
         </div>
       ) : (
         <div className="request-grid">
-          {assigned.map((request) => (
-            <RequestCard
-              key={request.id}
-              request={request}
-              workerMode={false}
-            />
-          ))}
+          {workerAssignments.map((assignment) => {
+            const isCompleted =
+              assignment.assignment_status ===
+              "Completed";
+
+            return (
+              <div
+                className="request-card"
+                key={assignment.assignment_id}
+              >
+                <div className="request-card-top">
+                  <div>
+                    <span className="eyebrow">
+                      {assignment.priority}
+                    </span>
+
+                    <h3>
+                      {assignment.company_name}
+                    </h3>
+                  </div>
+
+                  <span
+                    className={`status-badge ${
+                      isCompleted
+                        ? "status-completed"
+                        : ""
+                    }`}
+                  >
+                    {assignment.assignment_status}
+                  </span>
+                </div>
+
+                <div className="request-details">
+                  <div>
+                    📦 <strong>Work</strong>
+                    <span>
+                      {assignment.work_type}
+                    </span>
+                  </div>
+
+                  <div>
+                    📍 <strong>Location</strong>
+                    <span>
+                      {assignment.location}
+                    </span>
+                  </div>
+
+                  <div>
+                    ⏱ <strong>Duration</strong>
+                    <span>
+                      {assignment.duration}
+                    </span>
+                  </div>
+
+                  <div>
+                    👥{" "}
+                    <strong>Workers Required</strong>
+                    <span>
+                      {assignment.workers_required}
+                    </span>
+                  </div>
+
+                  <div>
+                    📅 <strong>Date</strong>
+                    <span>
+                      {assignment.required_date
+                        ? new Date(
+                            assignment.required_date
+                          ).toLocaleDateString()
+                        : "Not specified"}
+                    </span>
+                  </div>
+                </div>
+
+                {!isCompleted && (
+                  <div className="assignment-action">
+                    <button
+                      className="primary-btn complete-assignment-btn"
+                      onClick={() =>
+                        handleCompleteAssignment(
+                          assignment.assignment_id
+                        )
+                      }
+                    >
+                      ✓ Mark Assignment Completed
+                    </button>
+                  </div>
+                )}
+
+                {isCompleted && (
+                  <div className="assignment-completed-message">
+                    ✓ Assignment completed successfully
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </>
@@ -1263,242 +2461,598 @@ const AvailableJobs = () => {
      PROFILE
   ========================================================= */
 
-  const Profile = () => {
-    return (
-      <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">Worker Portal</div>
-
-            <h1>My Profile</h1>
-
-            <p>Your worker profile and availability information.</p>
-          </div>
+ const Profile = () => {
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">WORKER PORTAL</div>
+          <h1>My Profile</h1>
+          <p>Your worker profile and account information.</p>
         </div>
 
+        <button
+          className="secondary-btn"
+          onClick={loadWorkerProfile}
+          disabled={workerProfileLoading}
+        >
+          {workerProfileLoading ? "Loading..." : "↻ Refresh"}
+        </button>
+      </div>
+
+      {workerProfileLoading ? (
+        <div className="empty-state">
+          <h3>Loading profile...</h3>
+          <p>Fetching your latest profile information.</p>
+        </div>
+      ) : !workerProfile ? (
+        <div className="empty-state">
+          <h3>Profile not available</h3>
+          <p>Unable to load your worker profile.</p>
+        </div>
+      ) : (
         <div className="profile-card">
+
+          {/* PROFILE HEADER */}
           <div className="profile-main">
-            <div className="large-avatar">RK</div>
+            <div className="large-avatar">
+              {workerProfile.name
+                ? workerProfile.name.charAt(0).toUpperCase()
+                : "W"}
+            </div>
 
             <div>
-              <h2>Rahul Kumar</h2>
-
-              <p>Delivery Partner • Hyderabad</p>
+              <h2>{workerProfile.name}</h2>
+              <p>GigForce Worker</p>
             </div>
           </div>
 
+          {/* PROFILE TAGS */}
           <div className="profile-tags">
-            <span>Delivery</span>
-            <span>Warehouse</span>
-            <span>Store Operations</span>
-            <span>Available</span>
+            <span>Worker ID #{workerProfile.id}</span>
+            <span>
+              {workerProfile.role === "worker"
+                ? "Worker"
+                : workerProfile.role}
+            </span>
+            <span>Active Account</span>
+          </div>
+
+          {/* PROFILE DETAILS */}
+          <div className="profile-details">
+
+            <div className="profile-detail-item">
+              <span>Email</span>
+              <strong>{workerProfile.email}</strong>
+            </div>
+
+            <div className="profile-detail-item">
+              <span>Role</span>
+              <strong>
+                {workerProfile.role === "worker"
+                  ? "Worker"
+                  : workerProfile.role}
+              </strong>
+            </div>
+
+            <div className="profile-detail-item">
+              <span>Worker ID</span>
+              <strong>#{workerProfile.id}</strong>
+            </div>
+
+            <div className="profile-detail-item">
+              <span>Joined</span>
+              <strong>
+                {workerProfile.created_at
+                  ? new Date(
+                      workerProfile.created_at
+                    ).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "N/A"}
+              </strong>
+            </div>
+
           </div>
         </div>
-      </>
-    );
-  };
-
+      )}
+    </>
+  );
+};
   /* =========================================================
      ADMIN DASHBOARD
   ========================================================= */
 
   const AdminDashboard = () => {
-    return (
-      <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">Administration</div>
+  const [adminStats, setAdminStats] = useState({
+    total_workers: 0,
+    available_workers: 0,
+    busy_workers: 0,
+    total_companies: 0,
+    total_requests: 0,
+    active_requests: 0,
+    completed_requests: 0,
+  });
 
-            <h1>Admin Dashboard</h1>
+  const [adminRequests, setAdminRequests] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(true);
 
-            <p>Monitor the B2B workforce marketplace.</p>
-          </div>
+  useEffect(() => {
+    loadAdminDashboard();
+  }, []);
+
+  const loadAdminDashboard = async () => {
+    setAdminLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/dashboard`, {
+        method: "GET",
+       headers: {
+  Authorization: `Bearer ${getAuthToken()}`,
+  Accept: "application/json",
+},
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Failed to load admin dashboard."
+        );
+      }
+
+      setAdminStats(data.stats || {});
+
+      setAdminRequests(
+        (data.recent_requests || []).map((request) =>
+          normalizeApiRequest(request)
+        )
+      );
+    } catch (error) {
+      console.error("Admin Dashboard API error:", error);
+      showToast(error.message || "Could not load admin dashboard.");
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">Administration</div>
+
+          <h1>Admin Dashboard</h1>
+
+          <p>Monitor the B2B workforce marketplace.</p>
         </div>
 
-        <div className="stats-grid">
-          <Stat icon="◉" label="Total Requests" value={totalRequests} />
+        <button
+          className="secondary-btn"
+          onClick={loadAdminDashboard}
+          disabled={adminLoading}
+        >
+          ↻ {adminLoading ? "Loading..." : "Refresh"}
+        </button>
+      </div>
 
-          <Stat icon="♙" label="Registered Workers" value={workers.length} />
+      <div className="stats-grid">
+        <Stat
+          icon="◉"
+          label="Total Requests"
+          value={adminStats.total_requests}
+        />
 
-          <Stat
-            icon="✓"
-            label="Available Workers"
-            value={workersAvailable}
-          />
+        <Stat
+          icon="♙"
+          label="Registered Workers"
+          value={adminStats.total_workers}
+        />
 
-          <Stat icon="▣" label="B2B Companies" value="4" />
+        <Stat
+          icon="✓"
+          label="Available Workers"
+          value={adminStats.available_workers}
+        />
+
+        <Stat
+          icon="▣"
+          label="B2B Companies"
+          value={adminStats.total_companies}
+        />
+      </div>
+
+      <div className="section-header">
+        <div>
+          <h2>Latest Workforce Requests</h2>
+          <p>Monitor incoming business requirements.</p>
         </div>
+      </div>
 
-        <div className="section-header">
-          <div>
-            <h2>Latest Workforce Requests</h2>
-            <p>Monitor incoming business requirements.</p>
-          </div>
+      {adminLoading ? (
+        <div className="empty-state">
+          Loading workforce requests...
         </div>
-
+      ) : adminRequests.length === 0 ? (
+        <div className="empty-state">
+          <h3>No workforce requests</h3>
+          <p>New business requirements will appear here.</p>
+        </div>
+      ) : (
         <div className="request-grid">
-          {requests.map((request) => (
-            <RequestCard key={request.id} request={request} />
+          {adminRequests.map((request) => (
+            <RequestCard
+              key={request.id}
+              request={request}
+            />
           ))}
         </div>
-      </>
-    );
-  };
+      )}
+    </>
+  );
+};
 
   /* =========================================================
      ADMIN REQUESTS
   ========================================================= */
 
-  const AdminRequests = () => {
-    return (
-      <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">Administration</div>
+ const AdminRequests = () => {
+  const [adminRequests, setAdminRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-            <h1>Workforce Requests</h1>
+  useEffect(() => {
+    loadAdminRequests();
+  }, []);
 
-            <p>Manage all workforce requirements from B2B companies.</p>
-          </div>
-        </div>
+  const loadAdminRequests = async () => {
+    setLoading(true);
 
-        <div className="request-grid">
-          {requests.map((request) => (
-            <RequestCard key={request.id} request={request} />
-          ))}
-        </div>
-      </>
-    );
+    try {
+    const response = await fetch(`${API_BASE_URL}/admin/requests`, {
+  method: "GET",
+  headers: {
+    Authorization: `Bearer ${getAuthToken()}`,
+    Accept: "application/json",
+  },
+});
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Failed to load workforce requests."
+        );
+      }
+
+      setAdminRequests(
+        (data.requests || []).map((request) =>
+          normalizeApiRequest(request)
+        )
+      );
+    } catch (error) {
+      console.error("Admin Requests API error:", error);
+
+      showToast(
+        error.message || "Could not load workforce requests."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">Administration</div>
+
+          <h1>Workforce Requests</h1>
+
+          <p>
+            Manage all workforce requirements from B2B companies.
+          </p>
+        </div>
+
+        <button
+          className="secondary-btn"
+          onClick={loadAdminRequests}
+          disabled={loading}
+        >
+          ↻ {loading ? "Loading..." : "Refresh"}
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="empty-state">
+          Loading workforce requests...
+        </div>
+      ) : adminRequests.length === 0 ? (
+        <div className="empty-state">
+          <h3>No workforce requests</h3>
+
+          <p>
+            New business requirements will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="request-grid">
+          {adminRequests.map((request) => (
+            <RequestCard
+              key={request.id}
+              request={request}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
   /* =========================================================
      ADMIN WORKERS
   ========================================================= */
 
-  const AdminWorkers = () => {
-    return (
-      <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">Administration</div>
+ const AdminWorkers = () => {
+  const [adminWorkers, setAdminWorkers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-            <h1>Workers</h1>
+  useEffect(() => {
+    loadAdminWorkers();
+  }, []);
 
-            <p>Manage delivery partners and gig workers.</p>
-          </div>
-        </div>
+  const loadAdminWorkers = async () => {
+    setLoading(true);
 
-        <div className="worker-grid">
-          {workers.map((worker) => (
-            <div className="worker-card" key={worker.id}>
-              <div className="worker-top">
-                <div className="avatar">{worker.initials}</div>
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/workers`, {
+  method: "GET",
+  headers: {
+    Authorization: `Bearer ${getAuthToken()}`,
+    Accept: "application/json",
+  },
+});
 
-                <span
-                  className={`availability ${
-                    worker.availability === "Available"
-                      ? "available"
-                      : "busy"
-                  }`}
-                >
-                  {worker.availability}
-                </span>
-              </div>
+      const data = await response.json();
 
-              <h3>{worker.name}</h3>
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Failed to load workers."
+        );
+      }
 
-              <p>{worker.type}</p>
+      setAdminWorkers(data.workers || []);
+    } catch (error) {
+      console.error("Admin Workers API error:", error);
 
-              <div className="worker-details">
-                <div>
-                  <span>Location</span>
-                  <strong>{worker.location}</strong>
-                </div>
-
-                <div>
-                  <span>Experience</span>
-                  <strong>{worker.experience}</strong>
-                </div>
-
-                <div>
-                  <span>Rating</span>
-                  <strong>⭐ {worker.rating}</strong>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </>
-    );
+      showToast(
+        error.message || "Could not load workers."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">Administration</div>
+
+          <h1>Workers</h1>
+
+          <p>Manage delivery partners and gig workers.</p>
+        </div>
+
+        <button
+          className="secondary-btn"
+          onClick={loadAdminWorkers}
+          disabled={loading}
+        >
+          ↻ {loading ? "Loading..." : "Refresh"}
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="empty-state">
+          Loading workers...
+        </div>
+      ) : adminWorkers.length === 0 ? (
+        <div className="empty-state">
+          <h3>No workers registered</h3>
+
+          <p>
+            Registered delivery and gig workers will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="worker-grid">
+          {adminWorkers.map((worker) => {
+            const name = worker.name || "Worker";
+
+            const initials = name
+              .split(" ")
+              .map((part) => part[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase();
+
+            return (
+              <div
+                className="worker-card"
+                key={worker.id}
+              >
+                <div className="worker-top">
+                  <div className="avatar">
+                    {initials}
+                  </div>
+
+                  <span
+                    className={`availability ${
+                      worker.availability === "Available"
+                        ? "available"
+                        : "busy"
+                    }`}
+                  >
+                    {worker.availability || "Unknown"}
+                  </span>
+                </div>
+
+                <h3>{name}</h3>
+
+                <p>{worker.worker_type || "Gig Worker"}</p>
+
+                <div className="worker-details">
+                  <div>
+                    <span>Location</span>
+                    <strong>
+                      {worker.city || "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Phone</span>
+                    <strong>
+                      {worker.phone || "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Email</span>
+                    <strong>
+                      {worker.email || "—"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Skills</span>
+                    <strong>
+                      {worker.skills || "—"}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+};
   /* =========================================================
      ADMIN COMPANIES
   ========================================================= */
 
   const AdminCompanies = () => {
-    const companies = [
-      {
-        name: "QuickCommerce",
-        industry: "Quick Commerce",
-        requests: 8,
-        workers: 42,
-        status: "Active",
-      },
-      {
-        name: "FlashKart",
-        industry: "E-Commerce",
-        requests: 6,
-        workers: 28,
-        status: "Active",
-      },
-      {
-        name: "RapidRetail",
-        industry: "Retail",
-        requests: 4,
-        workers: 19,
-        status: "Active",
-      },
-      {
-        name: "CityMart",
-        industry: "Retail",
-        requests: 3,
-        workers: 12,
-        status: "Active",
-      },
-    ];
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    return (
-      <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">Administration</div>
+  useEffect(() => {
+    loadAdminCompanies();
+  }, []);
 
-            <h1>B2B Companies</h1>
+  const loadAdminCompanies = async () => {
+    setLoading(true);
 
-            <p>Companies using the GigForce workforce network.</p>
-          </div>
+    try {
+      const response = await fetch(
+  `${API_BASE_URL}/admin/companies`,
+  {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${getAuthToken()}`,
+      Accept: "application/json",
+    },
+  }
+);
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Failed to load companies."
+        );
+      }
+
+      setCompanies(data.companies || []);
+    } catch (error) {
+      console.error("Admin Companies API error:", error);
+
+      showToast(
+        error.message || "Could not load companies."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">Administration</div>
+
+          <h1>B2B Companies</h1>
+
+          <p>
+            Companies using the GigForce workforce network.
+          </p>
         </div>
 
+        <button
+          className="secondary-btn"
+          onClick={loadAdminCompanies}
+          disabled={loading}
+        >
+          ↻ {loading ? "Loading..." : "Refresh"}
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="empty-state">
+          Loading companies...
+        </div>
+      ) : companies.length === 0 ? (
+        <div className="empty-state">
+          <h3>No companies registered</h3>
+
+          <p>
+            B2B companies using GigForce will appear here.
+          </p>
+        </div>
+      ) : (
         <div className="business-list">
           {companies.map((company) => (
-            <div className="business-row" key={company.name}>
-              <strong>{company.name}</strong>
+            <div
+              className="business-row"
+              key={company.id}
+            >
+              <strong>
+                {company.company_name}
+              </strong>
 
-              <span>{company.industry}</span>
+              <span>
+                {company.industry || "B2B Workforce"}
+              </span>
 
-              <span>{company.requests} requests</span>
+              <span>
+                {company.requests} requests
+              </span>
 
-              <span>{company.workers} workers</span>
+              <span>
+                {company.workers} workers
+              </span>
 
-              <span className="badge">{company.status}</span>
+              <span className="badge">
+                {company.status || "Active"}
+              </span>
             </div>
           ))}
         </div>
-      </>
-    );
-  };
-
+      )}
+    </>
+  );
+};
   /* =========================================================
      ROUTER
   ========================================================= */
@@ -1506,7 +3060,7 @@ const AvailableJobs = () => {
   const renderPage = () => {
     if (role === "company") {
       if (activePage === "request") {
-        return <RequestWorkers />;
+return renderRequestWorkers();
       }
 
       if (activePage === "requests") {
@@ -1551,12 +3105,15 @@ const AvailableJobs = () => {
     return <AdminDashboard />;
   };
 
-  const selectedDetailsRequest = requests.find(
-    (request) => request.id === selectedDetailsRequestId
+
+  const closeDetails = () => setSelectedDetailsRequest(null);
+if (!isAuthenticated) {
+  return (
+    <LoginScreen
+      onLogin={handleLoginSuccess}
+    />
   );
-
-  const closeDetails = () => setSelectedDetailsRequestId(null);
-
+}
   return (
     <div className="app">
       {renderHeader()}
@@ -1622,27 +3179,48 @@ const AvailableJobs = () => {
             </div>
 
             <div className="details-assigned">
-              <div className="details-section-title">Assigned Workers</div>
+  <div className="details-section-title">
+    Workforce Progress
+  </div>
 
-              {(selectedDetailsRequest.assignedWorkers || []).length === 0 ? (
-                <p>No workers assigned yet.</p>
-              ) : (
-                <div className="assigned-worker-list">
-                  {selectedDetailsRequest.assignedWorkers.map((worker) => (
-                    <span key={worker.id}>{worker.name}</span>
-                  ))}
-                </div>
-              )}
+  <div className="details-progress-grid">
+    <div>
+      <span>Required</span>
+      <strong>
+        {Number(selectedDetailsRequest.workersRequired || 0)}
+      </strong>
+    </div>
 
-              <p>
-                {Math.max(
-                  Number(selectedDetailsRequest.workersRequired) -
-                    (selectedDetailsRequest.assignedWorkers || []).length,
-                  0
-                )}{" "}
-                workers still required
-              </p>
-            </div>
+    <div>
+      <span>Assigned</span>
+      <strong>
+        {Number(selectedDetailsRequest.assignedCount || 0)}
+      </strong>
+    </div>
+
+    <div>
+      <span>Completed</span>
+      <strong>
+        {Number(selectedDetailsRequest.completedWorkers || 0)}
+      </strong>
+    </div>
+
+    <div>
+      <span>Remaining</span>
+      <strong>
+        {Number(
+          selectedDetailsRequest.workersRemaining ??
+            Math.max(
+              Number(selectedDetailsRequest.workersRequired || 0) -
+                Number(selectedDetailsRequest.assignedCount || 0) -
+                Number(selectedDetailsRequest.completedWorkers || 0),
+              0
+            )
+        )}
+      </strong>
+    </div>
+  </div>
+</div>
 
             <div className="details-modal-footer">
               <button className="secondary-btn" onClick={closeDetails}>
